@@ -1,0 +1,112 @@
+# Control-plane components are managed by Google and not scrapeable on GKE.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    nodeSelector:
+      pool: system
+    resources:
+      requests:
+        cpu: 250m
+        memory: 1Gi
+      limits:
+        memory: 3Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: standard-rwo
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 30Gi
+    # Scrape any pod annotated with prometheus.io/scrape=true
+    # (gateway, controller, Triton) without needing ServiceMonitor CRDs.
+    additionalScrapeConfigs:
+      - job_name: annotated-pods
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: ["${app_namespace}"]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: app
+
+alertmanager:
+  alertmanagerSpec:
+    nodeSelector:
+      pool: system
+
+prometheusOperator:
+  nodeSelector:
+    pool: system
+
+grafana:
+  adminUser: "${grafana_admin_user}"
+  adminPassword: "${grafana_admin_password}"
+  grafana.ini:
+    server:
+      root_url: "https://${grafana_host}"
+  service:
+    annotations:
+      cloud.google.com/neg: '{"ingress": true}'
+      cloud.google.com/backend-config: '{"default": "grafana-ui"}'
+  nodeSelector:
+    pool: system
+  serviceAccount:
+    create: true
+    name: grafana
+    annotations:
+      iam.gke.io/gcp-service-account: ${grafana_gsa}
+  persistence:
+    enabled: true
+    storageClassName: standard-rwo
+    size: 5Gi
+  additionalDataSources:
+    - name: Google Cloud Monitoring
+      uid: gcm
+      type: stackdriver
+      access: proxy
+      jsonData:
+        authenticationType: gce
+        defaultProject: ${project_id}
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: ctseg
+          orgId: 1
+          folder: CT Segmentation
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/ctseg
+  dashboards:
+    ctseg:
+      ct-segmentation:
+        json: |
+          ${dashboard_json}

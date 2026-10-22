@@ -1,0 +1,25 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+*.onnx
+*.pt
+*.nii
+*.nii.gz
+__pycache__/
+build/
+tfplan
+plan.log
+apply.log
+
+# Training project (datasets, checkpoints, its own git repo) and model weights:
+# too large for GitHub; models are published to the GCS weights bucket instead.
+Swin-UNETR/
+weights/
+*.pth
+
+# Terraform plans can contain secrets; keep the lock files (.terraform.lock.hcl) committed
+*.tfplan
+
+# OS / editor
+.DS_Store

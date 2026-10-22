@@ -1,0 +1,9 @@
+# torch is installed from the CPU-only index in the Dockerfile (inference runs on Triton).
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+numpy==2.5.4
+nibabel==5.3.2
+monai==1.5.2
+tritonclient[grpc]==2.60.0
+google-cloud-storage==3.1.0
+prometheus-client==0.21.1

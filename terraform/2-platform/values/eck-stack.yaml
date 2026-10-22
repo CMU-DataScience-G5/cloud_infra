@@ -1,0 +1,48 @@
+eck-elasticsearch:
+  enabled: true
+  fullnameOverride: elasticsearch
+  # Plain HTTP inside the cluster (still password-protected); not exposed externally.
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  nodeSets:
+    - name: default
+      count: 1
+      config:
+        node.store.allow_mmap: false
+      podTemplate:
+        spec:
+          nodeSelector:
+            pool: system
+          containers:
+            - name: elasticsearch
+              resources:
+                requests:
+                  cpu: 500m
+                  memory: 3Gi
+                limits:
+                  memory: 3Gi
+      volumeClaimTemplates:
+        - metadata:
+            name: elasticsearch-data
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            storageClassName: standard-rwo
+            resources:
+              requests:
+                storage: 30Gi
+
+eck-kibana:
+  enabled: true
+  fullnameOverride: kibana
+  elasticsearchRef:
+    name: elasticsearch
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  podTemplate:
+    spec:
+      nodeSelector:
+        pool: system

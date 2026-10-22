@@ -1,0 +1,95 @@
+kind: DaemonSet
+
+# Image tag resolves to v1.19.3-debian-elasticsearch8-1.1. Deliberately the ES 8 client:
+# fluent-plugin-elasticsearch 6.0.0 + the ES 9 client send two Accept headers, which
+# Elasticsearch 9 rejects. ES 9 accepts ES 8 clients via REST API compatibility.
+variant: elasticsearch8
+variantVersion: "1.1"
+
+# Run on every node, GPU nodes included, so Triton logs are collected.
+tolerations:
+  - operator: Exists
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+env:
+  - name: ES_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: elasticsearch-es-elastic-user # created by the ECK operator
+        key: elastic
+
+dashboards:
+  enabled: "false"
+
+fileConfigs:
+  # Chart default plus a de-dot step: label keys like "app.kubernetes.io/name" would make
+  # Elasticsearch map kubernetes.labels.app as an object, and then reject every log whose
+  # pod has a plain "app: ..." label (our gateway/controller/triton).
+  02_filters.conf: |-
+    <label @KUBERNETES>
+      <match kubernetes.var.log.containers.fluentd**>
+        @type relabel
+        @label @FLUENT_LOG
+      </match>
+      <filter kubernetes.**>
+        @type kubernetes_metadata
+        @id filter_kube_metadata
+        skip_labels false
+        skip_container_metadata false
+        skip_namespace_metadata true
+        skip_master_url true
+      </filter>
+      <filter kubernetes.**>
+        @type record_transformer
+        @id filter_dedot_labels
+        enable_ruby true
+        auto_typecast true
+        <record>
+          kubernetes ${(record["kubernetes"] || {}).merge("labels" => ((record.dig("kubernetes", "labels") || {}).transform_keys { |k| k.tr(".", "_") }))}
+        </record>
+      </filter>
+      <match **>
+        @type relabel
+        @label @DISPATCH
+      </match>
+    </label>
+  04_outputs.conf: |-
+    <label @OUTPUT>
+      <match **>
+        @type elasticsearch
+        host elasticsearch-es-http.logging.svc
+        port 9200
+        scheme http
+        user elastic
+        password "#{ENV['ES_PASSWORD']}"
+        logstash_format true
+        logstash_prefix k8s-logs
+        include_tag_key true
+        suppress_type_name true
+        # Don't block startup waiting for Elasticsearch; state the client's major version
+        # instead (otherwise the plugin assumes ES 5).
+        verify_es_version_at_startup false
+        default_elasticsearch_version 8
+        reconnect_on_error true
+        reload_on_failure true
+        reload_connections false
+        request_timeout 30s
+        <buffer>
+          @type file
+          path /var/log/fluentd-buffers/es.buffer
+          flush_interval 5s
+          flush_thread_count 2
+          chunk_limit_size 8M
+          total_limit_size 512M
+          retry_max_interval 30
+          retry_forever true
+          overflow_action drop_oldest_chunk
+        </buffer>
+      </match>
+    </label>

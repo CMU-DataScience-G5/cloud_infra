@@ -1,0 +1,40 @@
+# Swin UNETR (MONAI SwinUNETR, img_size 96^3, in_channels 1, feature_size 48), exported
+# with scripts/export_model.py. Classes: background, right upper, right middle, right lower, left upper, left lower.
+#
+# Bucket layout (scripts/publish_weights.sh):
+#   gs://<weights_bucket>/model_repository/swin_unetr_lung_lobes/config.pbtxt
+#   gs://<weights_bucket>/model_repository/swin_unetr_lung_lobes/<version>/model.onnx
+
+name: "swin_unetr_lung_lobes"
+platform: "onnxruntime_onnx"
+max_batch_size: 4   # controller sends sw_batch_size (4) patches per request
+
+input [
+  {
+    name: "image"
+    data_type: TYPE_FP32
+    dims: [ 1, 96, 96, 96 ]
+  }
+]
+
+output [
+  {
+    name: "logits"
+    data_type: TYPE_FP32
+    dims: [ 6, 96, 96, 96 ]
+  }
+]
+
+instance_group [
+  {
+    count: 1
+    kind: KIND_GPU
+  }
+]
+
+dynamic_batching {
+  max_queue_delay_microseconds: 2000
+}
+
+# Serve only the newest published version; older ones stay in the bucket for rollback.
+version_policy: { latest: { num_versions: 1 } }

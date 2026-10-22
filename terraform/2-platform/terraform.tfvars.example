@@ -1,0 +1,15 @@
+state_bucket = "your-gcp-project-id-tfstate"
+
+# Printed by scripts/build_images.sh
+gateway_image    = "us-central1-docker.pkg.dev/your-gcp-project-id/ctseg-images/gateway:v1"
+controller_image = "us-central1-docker.pkg.dev/your-gcp-project-id/ctseg-images/controller:v1"
+
+# Set to 0 to release the GPU node (and stop paying for it) while idle.
+triton_replicas = 1
+
+# Default task for requests that don't specify one ("lung_cancer" or "lung_lobes").
+# To change sliding-window overlap etc., override the whole `tasks` map (see variables.tf).
+default_task = "lung_cancer"
+
+# Optional: a DNS A record pointing at the gateway IP enables a managed TLS cert.
+# domain = "ctseg.example.com"

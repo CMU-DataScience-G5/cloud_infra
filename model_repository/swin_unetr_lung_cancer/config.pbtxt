@@ -1,0 +1,74 @@
+# Swin UNETR (MONAI SwinUNETR, img_size 96^3, in_channels 1, feature_size 48), exported
+# with scripts/export_model.py. Classes: background, cancer.
+#
+# Bucket layout (scripts/publish_weights.sh):
+#   gs://<weights_bucket>/model_repository/swin_unetr_lung_cancer/config.pbtxt
+#   gs://<weights_bucket>/model_repository/swin_unetr_lung_cancer/<version>/model.onnx
+
+name: "swin_unetr_lung_cancer"
+platform: "onnxruntime_onnx"
+max_batch_size: 4   # controller sends sw_batch_size (4) patches per request
+
+input [
+  {
+    name: "image"
+    data_type: TYPE_FP32
+    dims: [ 1, 96, 96, 96 ]
+  }
+]
+
+output [
+  {
+    name: "logits"
+    data_type: TYPE_FP32
+    dims: [ 2, 96, 96, 96 ]
+  }
+]
+
+instance_group [
+  {
+    count: 1
+    kind: KIND_GPU
+  }
+]
+
+dynamic_batching {
+  max_queue_delay_microseconds: 2000
+}
+
+# TensorRT FP16 via ONNX Runtime's TensorRT execution provider (ops TensorRT can't run
+# fall back to CUDA). Same model.onnx; ~3-5x faster than plain CUDA FP32 on an L4.
+# Engines are compiled per input shape and cached in /trt_cache (an emptyDir on the pod).
+optimization {
+  execution_accelerators {
+    gpu_execution_accelerator : [
+      {
+        name : "tensorrt"
+        parameters { key: "precision_mode" value: "FP16" }
+        parameters { key: "max_workspace_size_bytes" value: "4294967296" }
+        parameters { key: "trt_engine_cache_enable" value: "1" }
+        parameters { key: "trt_engine_cache_path" value: "/trt_cache" }
+      }
+    ]
+  }
+}
+
+# Compile the TensorRT engine at load time instead of on the first real request. The
+# controller always sends batches of sw_batch_size = 4.
+model_warmup [
+  {
+    name: "batch4"
+    batch_size: 4
+    inputs {
+      key: "image"
+      value: {
+        data_type: TYPE_FP32
+        dims: [ 1, 96, 96, 96 ]
+        random_data: true
+      }
+    }
+  }
+]
+
+# Serve only the newest published version; older ones stay in the bucket for rollback.
+version_policy: { latest: { num_versions: 1 } }

@@ -1,0 +1,8 @@
+# Used by scripts/build_images.sh: builds one service directory and pushes the image.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-t", "${_IMAGE}", "."]
+images:
+  - ${_IMAGE}
+options:
+  logging: CLOUD_LOGGING_ONLY

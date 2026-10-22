@@ -1,0 +1,19 @@
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+zone       = "us-central1-a"
+
+# GPU for Triton. Options (check quota + zone availability first):
+#   nvidia-l4        + g2-standard-8   (24 GB, recommended)
+#   nvidia-tesla-t4  + n1-standard-8   (16 GB, cheapest)
+#   nvidia-tesla-a100 + a2-highgpu-1g  (40 GB, large 3D models)
+gpu_type         = "nvidia-l4"
+gpu_machine_type = "g2-standard-8"
+gpu_min_nodes    = 0
+gpu_max_nodes    = 2
+gpu_spot         = false
+
+# GPUs often run out in one zone; let the GPU pool use any of these (same region).
+gpu_zones = ["us-central1-a", "us-central1-b", "us-central1-c"]
+
+# Restrict kubectl access to your IP, e.g. ["203.0.113.4/32"]
+master_authorized_cidrs = []
