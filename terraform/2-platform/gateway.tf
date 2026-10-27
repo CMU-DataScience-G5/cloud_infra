@@ -65,6 +65,10 @@ resource "kubernetes_deployment_v1" "gateway" {
             name  = "MAX_UPLOAD_MB"
             value = tostring(var.max_upload_mb)
           }
+          env {
+            name  = "CORS_ALLOW_ORIGINS"
+            value = join(",", var.cors_allow_origins)
+          }
 
           env_from {
             secret_ref {

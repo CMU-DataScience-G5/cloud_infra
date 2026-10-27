@@ -13,12 +13,15 @@ import time
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
 CONTROLLER_URL = os.environ["CONTROLLER_URL"]
 API_KEYS = [k.strip() for k in os.environ.get("API_KEYS", "").split(",") if k.strip()]
 MAX_UPLOAD_BYTES = int(float(os.environ.get("MAX_UPLOAD_MB", "1024")) * 1024 * 1024)
 UPSTREAM_TIMEOUT_S = float(os.environ.get("UPSTREAM_TIMEOUT_S", "840"))
+# Origins allowed to call the API from a browser (the web frontend), comma-separated. Empty = no CORS.
+CORS_ALLOW_ORIGINS = [o.strip() for o in os.environ.get("CORS_ALLOW_ORIGINS", "").split(",") if o.strip()]
 
 REQUESTS = Counter("gateway_http_requests_total", "HTTP requests", ["route", "method", "status"])
 LATENCY = Histogram(
@@ -66,6 +69,18 @@ async def metrics_and_auth(request: Request, call_next):
     finally:
         REQUESTS.labels(route, request.method, str(status)).inc()
         LATENCY.labels(route).observe(time.perf_counter() - start)
+
+
+# Added after the auth middleware so it wraps it: CORS preflight (OPTIONS, no API key) is
+# answered here before auth runs.
+if CORS_ALLOW_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=CORS_ALLOW_ORIGINS,
+        allow_methods=["GET", "POST"],
+        allow_headers=["X-API-Key", "Authorization", "Content-Type"],
+        max_age=3600,
+    )
 
 
 def _authorized(request: Request) -> bool:

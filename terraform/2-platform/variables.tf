@@ -94,3 +94,9 @@ variable "max_upload_mb" {
   type        = number
   default     = 1024
 }
+
+variable "cors_allow_origins" {
+  description = "Browser origins allowed to call the API, e.g. where the web frontend is hosted (\"https://viewer.example.com\"). Empty disables CORS."
+  type        = list(string)
+  default     = []
+}
