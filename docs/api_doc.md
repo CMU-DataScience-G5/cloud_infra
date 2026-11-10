@@ -2,7 +2,7 @@
 
 HTTP API for 3D CT tumor segmentation. You upload a CT volume (NIfTI). A Swin UNETR model runs on a GPU (NVIDIA Triton, TensorRT FP16), and you get back a segmentation mask on **the same voxel grid as your input**, so you can overlay it directly in OHIF, 3D Slicer or ITK-SNAP.
 
-- **Base URL:** `http://34.110.150.32`
+- **Base URL:** `http://34.160.180.123`
 - **Version:** `v1`
 - **Format:** JSON request and response bodies (`Content-Type: application/json`)
 
@@ -11,7 +11,7 @@ HTTP API for 3D CT tumor segmentation. You upload a CT volume (NIfTI). A Swin UN
 ## Quick start
 
 ```bash
-export CTSEG_URL=http://34.110.150.32
+export CTSEG_URL=http://34.160.180.123
 export CTSEG_API_KEY=<your API key>
 
 # Which models are available?
@@ -157,7 +157,7 @@ Lists the available tasks and the class labels of each one.
 | Task | Model | Working size | Status |
 |---|---|---|---|
 | `lung_cancer` | Swin UNETR, 2 classes (MSD Task06 Lung) | 340³ | **Available** |
-| `lung_lobes` | Swin UNETR, 6 classes | 128³ | Listed but **not yet deployed**: requests return `503` until its weights are published |
+| `lung_lobes` | Swin UNETR, 6 classes (LUNA16 lobe annotations) | 128³ | **Available** (FP32, ~15 s per scan) |
 
 ---
 
@@ -234,7 +234,7 @@ python3 -c 'import base64,json; r=json.load(open("response.json")); open("mask.n
 import base64
 import requests
 
-URL = "http://34.110.150.32"
+URL = "http://34.160.180.123"
 HEADERS = {"X-API-Key": "<your API key>"}
 
 with open("lung_095.nii.gz", "rb") as f:

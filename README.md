@@ -19,8 +19,8 @@ Fluentd (DaemonSet) ─▶ Elasticsearch ─▶ Kibana
 | Data Storage | GCS bucket `<project>-ctseg-data`. Objects are deleted after 30 days by default. | `1-infra/storage.tf` |
 | Trained Weights | GCS bucket `<project>-ctseg-weights`, versioned | `1-infra/storage.tf` |
 | Monitoring | kube-prometheus-stack, plus a provisioned Grafana dashboard covering HTTP throughput, Triton, GPU, pods and GCS | `monitoring.tf`, `dashboards/` |
-| Logging | ECK (Elasticsearch + Kibana) and a Fluentd DaemonSet | `logging.tf` |
-| Web frontend | React + NiiVue static app: upload, 2D/3D viewer, report, history. Calls the same `/v1/*` API. | `frontend/` ([README](frontend/README.md)) |
+| Logging | ECK (Elasticsearch + Kibana) and a Fluentd DaemonSet; a one-shot Job creates the `k8s-logs-*` Kibana data view | `logging.tf` |
+| Web frontend | React + NiiVue static app: upload, 2D/3D viewer, report, history. Calls the same `/v1/*` API. | Kept outside this repo (`frontend/` is gitignored) |
 | Training pipeline | Runs on your own GPU machine (the `Swin-UNETR/` notebooks). It exports to ONNX and uploads to the weights bucket. | `scripts/export_model.py`, `scripts/publish_weights.sh` |
 
 The Terraform is split into **two stages** because the Kubernetes and Helm providers need a running cluster:
@@ -97,7 +97,7 @@ API:
 
 The mask has the same shape and affine as the uploaded CT, so you can overlay the two directly in OHIF or 3D Slicer and render them in 3D locally.
 
-Or use the web frontend in [`frontend/`](frontend/README.md): upload in the browser, view the result in 2D and 3D, and get a report.
+Or use the web frontend (kept outside this repo): upload in the browser, view the result in 2D and 3D, and get a report.
 
 ## Models (Swin UNETR)
 

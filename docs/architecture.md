@@ -12,7 +12,7 @@ flowchart TB
     TRAIN["Training device (off-cloud)<br/>Swin-UNETR notebooks → export_model.py"]
 
     subgraph GCP["Google Cloud · project datasciencef26 · us-central1"]
-        LB_API["API load balancer · HTTP<br/>34.110.150.32<br/>allowlist: /v1/*, /healthz"]
+        LB_API["API load balancer · HTTP<br/>34.160.180.123<br/>allowlist: /v1/*, /healthz"]
 
         subgraph GKE["GKE cluster ctseg-gke · private nodes · Workload Identity"]
             direction LR
@@ -62,8 +62,8 @@ flowchart LR
 
     subgraph EDGE["HTTPS load balancers · Google-managed certs"]
         direction TB
-        LB_G["grafana.136-82-70-130.sslip.io"]
-        LB_K["kibana.8-233-83-11.sslip.io"]
+        LB_G["grafana.136-81-209-210.sslip.io"]
+        LB_K["kibana.136-82-92-33.sslip.io"]
     end
 
     subgraph SRC["Sources (ns ctseg + every node)"]
