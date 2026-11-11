@@ -108,7 +108,7 @@ Runs segmentation synchronously. The response arrives when the mask is ready.
 #### What happens on the server
 
 1. The server stores the CT and decodes it.
-2. It preprocesses the volume the same way the model was trained: HU clipped to [-175, 250] and scaled to [0, 1], foreground crop, RAS orientation, resize to the task's working size.
+2. It preprocesses the volume the same way the model was trained: HU clipped to [-175, 250] and scaled to [0, 1], foreground crop, RAS orientation, then resize to the task's working size (or, for `lungs_covid`, resample to 1.5 × 1.5 × 2.0 mm).
 3. It runs a 96³ sliding window with 0.8 overlap; the patches go to the GPU in batches of 4.
 4. It takes the argmax, maps the mask back to the original grid, then stores and returns it.
 
@@ -149,6 +149,9 @@ Lists the available tasks and the class labels of each one.
     "lung_lobes": {
       "0": "background", "1": "right upper", "2": "right middle",
       "3": "right lower", "4": "left upper", "5": "left lower"
+    },
+    "lungs_covid": {
+      "0": "background", "1": "left lung", "2": "right lung", "3": "infection"
     }
   }
 }
@@ -158,6 +161,7 @@ Lists the available tasks and the class labels of each one.
 |---|---|---|---|
 | `lung_cancer` | Swin UNETR, 2 classes (MSD Task06 Lung) | 340³ | **Available** |
 | `lung_lobes` | Swin UNETR, 6 classes (LUNA16 lobe annotations) | 128³ | **Available** (FP32, ~15 s per scan) |
+| `lungs_covid` | Swin UNETR, 4 classes (COVID-19 CT lung and infection masks, Zenodo 3757476) | resampled to 1.5 × 1.5 × 2.0 mm, so the size depends on the scan | **Available** (FP32, ~1.5–2 min per scan) |
 
 ---
 
@@ -172,7 +176,7 @@ Needs no authentication. It returns `200 {"status": "ok"}` when the gateway is u
 Errors are JSON with a `detail` field:
 
 ```json
-{ "detail": "unknown task 'lungs'; available: ['lung_cancer', 'lung_lobes']" }
+{ "detail": "unknown task 'lungs'; available: ['lung_cancer', 'lung_lobes', 'lungs_covid']" }
 ```
 
 | Status | Meaning | What to do |

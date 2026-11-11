@@ -41,15 +41,17 @@ variable "triton_replicas" {
 
 # ---------------------------------------------------------------- Models
 # One entry per Swin UNETR task. Values mirror the training notebooks
-# (Swin-UNETR/notebook/*.ipynb): Resized(spatial_size=resize), out_channels = length(labels),
-# sliding_window_inference(roi 96^3, sw_batch_size, overlap). A task only works once its
-# triton_model has been published to the weights bucket (scripts/publish_weights.sh).
+# (Swin-UNETR/notebook/*.ipynb): Resized(spatial_size=resize) or Spacingd(pixdim=spacing)
+# (set exactly one), out_channels = length(labels), sliding_window_inference(roi 96^3,
+# sw_batch_size, overlap). A task only works once its triton_model has been published to
+# the weights bucket (scripts/publish_weights.sh).
 
 variable "tasks" {
   type = map(object({
     triton_model  = string
     labels        = list(string)
-    resize        = list(number)
+    resize        = optional(list(number))
+    spacing       = optional(list(number))
     overlap       = optional(number, 0.8)
     sw_batch_size = optional(number, 4)
     hu_min        = optional(number, -175)
@@ -66,6 +68,16 @@ variable "tasks" {
       labels       = ["background", "right upper", "right middle", "right lower", "left upper", "left lower"]
       resize       = [128, 128, 128]
     }
+    lungs_covid = {
+      triton_model = "swin_unetr_lungs_covid"
+      labels       = ["background", "left lung", "right lung", "infection"]
+      spacing      = [1.5, 1.5, 2.0]
+    }
+  }
+
+  validation {
+    condition     = alltrue([for t in values(var.tasks) : (t.resize == null) != (t.spacing == null)])
+    error_message = "Each task must set exactly one of resize or spacing."
   }
 }
 

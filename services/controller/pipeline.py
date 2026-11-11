@@ -25,6 +25,7 @@ from monai.transforms import (
     Orientationd,
     Resized,
     ScaleIntensityRanged,
+    Spacingd,
 )
 
 ROI_SIZE = (96, 96, 96)  # SwinUNETR(img_size=(96, 96, 96))
@@ -34,18 +35,26 @@ ROI_SIZE = (96, 96, 96)  # SwinUNETR(img_size=(96, 96, 96))
 class Task:
     triton_model: str
     labels: tuple[str, ...]  # index = class id
-    resize: tuple[int, int, int]  # Resized(spatial_size=...) used in training
+    # Exactly one of these, matching the training notebook: a fixed working size
+    # (Resized(spatial_size=...)) or a target voxel spacing in mm (Spacingd(pixdim=...)).
+    resize: tuple[int, int, int] | None = None
+    spacing: tuple[float, float, float] | None = None
     overlap: float = 0.8  # notebooks' inference cell
     sw_batch_size: int = 4
     hu_min: float = -175.0
     hu_max: float = 250.0
+
+    def __post_init__(self):
+        if (self.resize is None) == (self.spacing is None):
+            raise ValueError(f"{self.triton_model}: set exactly one of resize or spacing")
 
     @classmethod
     def from_dict(cls, d: dict) -> "Task":
         return cls(
             triton_model=d["triton_model"],
             labels=tuple(d["labels"]),
-            resize=tuple(d["resize"]),
+            resize=tuple(int(v) for v in d["resize"]) if d.get("resize") else None,
+            spacing=tuple(float(v) for v in d["spacing"]) if d.get("spacing") else None,
             overlap=float(d.get("overlap", 0.8)),
             sw_batch_size=int(d.get("sw_batch_size", 4)),
             hu_min=float(d.get("hu_min", -175)),
@@ -54,6 +63,10 @@ class Task:
 
 
 def preprocessing(task: Task) -> Compose:
+    if task.spacing is not None:
+        resample = Spacingd(keys="image", pixdim=task.spacing, mode="bilinear")
+    else:
+        resample = Resized(keys="image", spatial_size=task.resize, mode="trilinear")
     return Compose(
         [
             LoadImaged(keys="image", image_only=True),
@@ -63,7 +76,7 @@ def preprocessing(task: Task) -> Compose:
             ),
             CropForegroundd(keys="image", source_key="image"),
             Orientationd(keys="image", axcodes="RAS"),
-            Resized(keys="image", spatial_size=task.resize, mode="trilinear"),
+            resample,
         ]
     )
 

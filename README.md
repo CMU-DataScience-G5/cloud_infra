@@ -106,18 +106,19 @@ The serving pipeline reproduces `test_transforms` and the inference cell from `S
 1. Scale HU from [-175, 250] to [0, 1].
 2. Crop to the foreground.
 3. Reorient to RAS.
-4. Resize the whole volume to the task's `resize`.
+4. Resize the whole volume to the task's `resize`, or resample it to the task's `spacing` (mm per voxel).
 5. Run `sliding_window_inference` with a 96³ ROI, `sw_batch_size` 4 and `overlap` 0.8. Triton serves the patches.
 6. Take the argmax.
 
 After that, the controller inverts the resize, orientation and crop, so the mask lands on the original CT grid. The original `inferer.py` instead saved masks in the resized space with an identity affine.
 
-| Task | Triton model | Notebook | Classes | `resize` |
+| Task | Triton model | Notebook | Classes | `resize` / `spacing` |
 |---|---|---|---|---|
 | `lung_cancer` (default) | `swin_unetr_lung_cancer` | `cancer` | background, cancer | 340³ |
 | `lung_lobes` | `swin_unetr_lung_lobes` | `lung lobes` | background + 5 lobes | 128³ |
+| `lungs_covid` | `swin_unetr_lungs_covid` | `lungs covid` | background, left lung, right lung, infection | 1.5 × 1.5 × 2.0 mm |
 
-Both models are `SwinUNETR(in_channels=1, feature_size=48)`, and they differ only in `out_channels`. To add a task, such as the 4-class covid model:
+All models are `SwinUNETR(in_channels=1, feature_size=48)`, and they differ only in `out_channels`. To add a task:
 
 1. Add an entry to the `tasks` variable in `terraform/2-platform/variables.tf`.
 2. Copy a `model_repository/*/config.pbtxt` and change `name` and the output `dims`.
